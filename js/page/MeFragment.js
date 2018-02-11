@@ -62,7 +62,7 @@ export default class MeFragment extends Component{
         return(
             <View style={styles.container}>
                 <View style={styles.actionBar}>
-                    <Text style={{color: theme.actionBar.fontColor, fontSize: theme.actionBar.fontSize}}>我</Text>
+                    <Text style={{color: theme.actionBar.fontColor, fontSize: theme.actionBar.fontSize}}>个人信息</Text>
                 </View>
                 <ScrollView>
                 {Platform.OS === 'android' ?
