@@ -12,7 +12,6 @@ import {StatusBar} from 'react-native'
 import {StackNavigator, TabNavigator, TabBarBottom} from 'react-navigation'
 
 import color from './widget/color'
-import {screen, system} from './common'
 import TabBarItem from './widget/TabBarItem'
 
 import HomeScene from './scene/Home/HomeScene'
@@ -41,7 +40,6 @@ function getCurrentRouteName(navigationState: any) {
 class RootScene extends PureComponent<{}> {
     constructor() {
         super()
-
         StatusBar.setBarStyle('light-content')
     }
 
@@ -71,6 +69,7 @@ const Tab = TabNavigator(
         Home: {
             screen: HomeScene,
             navigationOptions: ({navigation}) => ({
+                tabBarLabel: '动态',
                 tabBarIcon: ({focused, tintColor}) => (
                     <TabBarItem
                         tintColor={tintColor}
