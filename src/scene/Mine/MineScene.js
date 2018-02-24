@@ -94,7 +94,7 @@ class MineScene extends PureComponent<Props, State> {
                 <Image style={styles.avatar} source={require('../../img/mine/avatar.png')} />
                 <View>
                     <View style={{flexDirection: 'row', alignItems: 'center',}}>
-                        <Heading2 style={{color: 'white'}}>素敌</Heading2>
+                        <Heading2 style={{color: 'white'}}>fds</Heading2>
                         <Image style={{marginLeft: 4}} source={require('../../img/mine/beauty_technician_v15.png')} />
                     </View>
                     <Paragraph style={{color: 'white', marginTop: 4}}>个人信息 ></Paragraph>
@@ -134,14 +134,10 @@ class MineScene extends PureComponent<Props, State> {
                 ],
                 [
                     {title: '好友去哪', image: require('../../img/mine/icon_mine_friends.png')},
-                    {title: '我的评价', image: require('../../img/mine/icon_mine_comment.png')},
-                    {title: '我的收藏', image: require('../../img/mine/icon_mine_collection.png')},
-                    {title: '会员中心', subtitle: 'v15', image: require('../../img/mine/icon_mine_membercenter.png')},
-                    {title: '积分商城', subtitle: '好礼已上线', image: require('../../img/mine/icon_mine_member.png')}
+                    {title: '我的收藏', image: require('../../img/mine/icon_mine_collection.png')}
                 ],
                 [
-                    {title: '客服中心', image: require('../../img/mine/icon_mine_customerService.png')},
-                    {title: '关于美团', subtitle: '我要合作', image: require('../../img/mine/icon_mine_aboutmeituan.png')}
+                    {title: '关于simple', image: require('../../img/mine/icon_mine_aboutmeituan.png')}
                 ]
             ]
         )

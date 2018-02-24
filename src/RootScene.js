@@ -71,7 +71,6 @@ const Tab = TabNavigator(
         Home: {
             screen: HomeScene,
             navigationOptions: ({navigation}) => ({
-                tabBarLabel: '团购',
                 tabBarIcon: ({focused, tintColor}) => (
                     <TabBarItem
                         tintColor={tintColor}
