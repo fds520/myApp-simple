@@ -69,7 +69,7 @@ const Tab = TabNavigator(
         Home: {
             screen: HomeScene,
             navigationOptions: ({navigation}) => ({
-                tabBarLabel: '动态',
+                tabBarLabel: '圆圆圈圈',
                 tabBarIcon: ({focused, tintColor}) => (
                     <TabBarItem
                         tintColor={tintColor}
