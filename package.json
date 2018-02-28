@@ -15,6 +15,8 @@
     "react-native-page-control": "^1.1.1",
     "react-native-refresh-list-view": "^1.0.6",
     "react-native-scrollable-tab-view": "^0.8.0",
+    "react-native-keyboard-spacer": "^0.3.0",
+    "react-native-qiniu": "^0.2.2",
     "react-navigation": "^1.0.0-beta.19"
   },
   "devDependencies": {

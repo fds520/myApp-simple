@@ -1,107 +1,388 @@
-/**
- * Copyright (c) 2017-present, Liu Jinyong
- * All rights reserved.
- *
- * https://github.com/huanxsd/MeiTuan  
- * @flow
- */
+import React from 'react';
+import {
+    Image,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    ScrollView,
+    Modal,
+    PropTypes,
+    StyleSheet,
+    Dimensions,
+    NativeModules
+} from 'react-native';
+
+import {newFeed} from '../../api/FeedAPI';
+import {Auth,Rpc} from 'react-native-qiniu';
+import KeyboardSpacer from 'react-native-keyboard-spacer';
+var ImagePicker = NativeModules.ImageCropPicker;
+
+const windowWidth = Dimensions.get('window').width;
+const margin = 20;
+const imgInterval = 5;
+const imgCountLimit = 9;
+const textLengthLimit = 140;
+
+var NewFeed = React.createClass({
+
+    getInitialState() {
+        return {
+            text: '',
+            images: [],
+            imagesID: [], //上传图片返回的 hash id
+            tags: [], //已经添加的tag
+            tag: '',  //正在输入的tag
+            tagCountLimit: 5,
+            uploadAlready: false,
+            animated: true,
+            modalVisible: true,
+            transparent: false,
+        };
+    },
+
+    cancle: function() {
+        this.setState({
+            modalVisible: false,
+        });
+        this.props.pop();
+    },
+
+    pickMultiple: function() {
+        ImagePicker.openPicker({
+            multiple: true,
+            maxFiles: imgCountLimit - this.state.images.length,
+        }).then(images => {
+            var newImages = this.state.images;
+            images.map((i, index) => {
+                console.log('received image', i);
+                newImages.push({uri: i.path, width: i.width, height: i.height, mime: i.mime, index: index});
+            });
+            this.setState({
+                images: newImages,
+            });
+        }).catch(e => alert(e));
+    },
+
+    upload: function() {
+
+        var putPolicy = new Auth.PutPolicy2(
+            {scope: "osfimgs2"}
+        );
+        var uptoken = putPolicy.token();
+
+        if(this.state.images !== null && this.state.images.length != 0) {
+            let formData = new FormData();
+            for(let img of this.state.images) {
+
+                formData.append('file'+img.index, {uri: img.uri, type: 'application/octet-stream',name: img.index});
+                formData.append('token', uptoken);
+
+                this.props.sendOk(false, 0);
+                Rpc.uploadFile(img.uri, uptoken, formData).then((response) => response.json()).then((responseData) => {
+                    console.log(responseData);
+                    this.state.imagesID.push({key:responseData.hash });
+                    if(this.state.imagesID.length == this.state.images.length) {
+                        newFeed(this.state.text, this.state.imagesID, this.state.tags, (result, id) => {
+                            this.props.sendOk(result, id);
+                        });
+                    }
+                });
+                this.cancle();
+            }
+
+        } else {
+            this.props.sendOk(false, 0);
+            newFeed(this.state.text, '', this.state.tags, (result, id) => {
+                this.props.sendOk(result, id);
+            });
+            this.cancle();
+        }
+    },
+
+    delImg: function(index) {
+        this.state.images.splice(index, 1);
+    },
+
+    renderImgsPicked: function() {
 
 
-import React, {PureComponent} from 'react'
-import {View, Text, StyleSheet, ScrollView, TouchableOpacity, ListView, Image} from 'react-native'
-import ScrollableTabView, {DefaultTabBar} from 'react-native-scrollable-tab-view'
+        var imgViews = [];
+        if(this.state.images !== null && this.state.images.length != 0) {
+            for(let img of this.state.images) {
+                imgViews.push(<View style={styles.imgWrapper}>
+                        {/* <Text style={styles.delIcon} onPress={this.delImg(img.index)}>x</Text> */}
+                        <Image style={styles.img} source={img} />
+                    </View>
+                );
+            }
+        }
 
-import {Heading2, Heading3, Paragraph} from '../../widget/Text'
-import {color, Button, NavigationItem, SpacingView} from '../../widget'
-import {screen, system} from '../../common'
-import api from '../../api'
-import NearbyListScene from './NearbyListScene'
+        if(this.state.images.length < imgCountLimit) {
+            imgViews.push(<View style={styles.imgWrapper}>
+                {/* <Text style={styles.delIcon} onPress={this.delImg(img.index)}>x</Text> */}
+                <TouchableOpacity onPress={this.pickMultiple}>
+                    <Image style={styles.img} source={require('../../img/pickBtn.png')} />
+                </TouchableOpacity>
+            </View>);
+        }
+        //this.upload();
 
-type Props = {
-    navigation: any,
-}
+        return imgViews || <View/>;
+    },
 
+    send: function() {
+        this.upload();
+    },
 
-class NearbyScene extends PureComponent<Props> {
+    checkTagInput: function(tag) {
+        //empty check
+        if(tag.indexOf(' ') == 0) return;
 
-    static navigationOptions = ({navigation}: any) => ({
-        headerRight: (
-            <TouchableOpacity style={styles.searchBar}>
-                <Image source={require('../../img/home/search_icon.png')} style={styles.searchIcon} />
-                <Paragraph>找附近的吃喝玩乐</Paragraph>
-            </TouchableOpacity>
-        ),
-        headerLeft: (
-            <TouchableOpacity style={{flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 10}}>
-                <Image style={{width: 13, height: 16}} source={require('../../img/public/icon_food_merchant_address.png')} />
-                <Text style={{fontSize: 15, color: '#333333'}}> 福州 鼓楼</Text>
-            </TouchableOpacity>
-        ),
-        headerStyle: {backgroundColor: 'white'},
-    })
+        //end input with blank space
+        if(tag.indexOf(' ') > 0) {
+            tag = tag.replace(/(^\s*)|(\s*$)/g,"");
+            console.log('['+tag+']');
+            for(let i in this.state.tags) {
+                if(this.state.tags[i] == tag) {
+                    return;
+                }
+            }
+            this.state.tags.push(tag);
+            this.setState({tag: ''});
+        } else {
+            this.setState({tag: tag});
+        }
 
-    render() {
-        let titles = ['享美食', '住酒店', '爱玩乐', '全部']
-        let types = [
-            ['热门', '面包甜点', '小吃快餐', '川菜', '日本料理', '韩国料理', '台湾菜', '东北菜'],
-            ['热门', '商务出行', '公寓民宿', '情侣专享', '高星特惠'],
-            ['热门', 'KTV', '足疗按摩', '洗浴汗蒸',  '电影院', '美发', '美甲'],
-            []
-        ]
+        //console.log('['+tag+']');
+    },
 
+    delTag: function(tag) {
+        console.log('del ' + tag);
+        var tags = this.state.tags;
+        for(let i in tags) {
+            if(tags[i] == tag) {
+                tags.splice(i,1);
+                break;
+            }
+        }
+        this.setState({tags: tags});
+    },
+
+    renderTags: function() {
+        var tagViews = [];
+        for(let i in this.state.tags) {
+            tagViews.push(<TouchableOpacity style={styles.tag} onPress={() => this.delTag(this.state.tags[i])}>
+                <Text style={{color: '#9B9B9B'}}>{this.state.tags[i]} X</Text>
+            </TouchableOpacity>);
+        }
+        return tagViews;
+    },
+
+    render: function() {
+        var modalBackgroundStyle = {
+            backgroundColor: this.state.transparent ? 'rgba(0, 0, 0, 0.5)' : '#f5fcff',
+        };
+        var innerContainerTransparentStyle = this.state.transparent
+            ? {backgroundColor: '#fff', padding: 20}
+            : null;
         return (
-            <ScrollableTabView
-                style={styles.container}
-                tabBarBackgroundColor='white'
-                tabBarActiveTextColor='#FE566D'
-                tabBarInactiveTextColor='#555555'
-                tabBarTextStyle={styles.tabBarText}
-                tabBarUnderlineStyle={styles.tabBarUnderline}
-            // renderTabBar={() => <DefaultTabBar style={styles.tabBar}/>}
-            >
-                {titles.map((title, i) => (
-                    <NearbyListScene
-                        tabLabel={titles[i]}
-                        key={i}
-                        types={types[i]}
-                        navigation={this.props.navigation}
-                    />
-                ))}
-            </ScrollableTabView>
-        )
-    }
-}
+            //<View style={styles.container}>
+            <Modal
+                animationType={"slide"}
+                transparent={this.state.transparent}
+                visible={this.state.modalVisible}>
+                <View style={styles.nav}>
+                    <View style={styles.cancleBtn}>
+                        <Text onPress={this.cancle}>取消</Text>
+                    </View>
+                    <View style={styles.title}><Text style={{textAlign: 'center', fontWeight: 'bold'}}>发状态</Text></View>
+                    <View style={styles.sendBtn}>
+                        <TouchableOpacity onPress={this.send}>
+                            <Text style={{textAlign: 'right', color: '#00B5AD'}}>发送</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+                <ScrollView style={{ flex: 1, flexDirection: 'column'}}>
+
+                    <View style={styles.input}>
+                        <View>
+                            <TextInput
+                                style={styles.multiline}
+                                placeholder="说点什么吧..."
+                                returnKeyType="next"
+                                autoFocus={true}
+                                multiline={true}
+                                keyboardType='twitter'
+                                maxLength = {140}
+                                value={this.state.text}
+                                onChangeText={(text) => this.setState({text})}
+                            />
+                            <Text style={{position: 'absolute', bottom: 10, right: 20, color: '#9B9B9B'}}>{textLengthLimit-this.state.text.length}</Text>
+                        </View>
+
+                    </View>
+                    <View style={styles.imgContainer}>
+                        {this.renderImgsPicked()}
+                    </View>
+                    <View style={styles.tagsContainer}>
+                        <View style={{flex:1, flexDirection: 'row'}}>
+                            {}
+                            <Text style={styles.tagIcon}>#</Text>
+                            <TextInput
+                                style={styles.tagInput}
+                                placeholder="添加标签"
+                                returnKeyType="done"
+                                autoFocus={false}
+                                multiline={false}
+                                keyboardType='twitter'
+                                maxLength = {140}
+                                value={this.state.tag}
+                                onChangeText={(tag) => {this.checkTagInput(tag)}}
+                            />
+                        </View>
+                        <View style={styles.tags}>
+                            {this.state.tags.length > 0 &&  this.renderTags()}
+                        </View>
+                    </View>
+                    <KeyboardSpacer/>
+                </ScrollView>
+
+            </Modal>
+
+            //</View>
+        );
+    },
+});
 
 
-const styles = StyleSheet.create({
+var styles = StyleSheet.create({
     container: {
-        flex: 1,
-        backgroundColor: color.paper
+        //justifyContent: 'center',
+        //marginTop: 70,
+        //padding: 20,
+        flex : 1,
+        // backgroundColor: '#ffffff',
     },
-    searchBar: {
-        width: screen.width * 0.65,
-        height: 30,
-        borderRadius: 19,
-        flexDirection: 'row',
-        justifyContent: 'center',
+    innerContainer: {
+        borderRadius: 10,
         alignItems: 'center',
-        backgroundColor: '#eeeeee',
-        alignSelf: 'flex-end',
-        marginRight: 20,
     },
-    searchIcon: {
+    title: {
+        flex: 1,
+    },
+    cancleBtn: {
+        width: 50,
+    },
+    sendBtn: {
+        width: 50,
+    },
+    wrap: {
+        flex: 1,
+        flexDirection:'column',
+    },
+    nav: {
+        //flex: 1,
+        flexDirection: 'row',
+        height: 70,
+        paddingTop: 35,
+        paddingLeft: 10,
+        paddingRight: 10,
+        borderBottomWidth: 0.3,
+        borderBottomColor: '#9B9B9B',
+    },
+    input: {
+        //flex:1,
+        //position: 'relative',
+        //flexDirection:'column',
+    },
+    footer: {
+        height: 30,
+        backgroundColor:'#ff99ff',
+    },
+    multiline: {
+        // borderWidth: 1,
+        // borderColor: 'black',
+        flex: 1,
+        fontSize: 18,
+        height: 150,
+        padding: 20,
+        paddingBottom: 40,
+    },
+    tagIcon: {
         width: 20,
-        height: 20,
-        margin: 5,
+        height: 40,
+        color: '#9B9B9B',
+        fontSize: 23,
+        marginLeft: 20,
     },
-    tabBarText: {
-        fontSize: 14,
-        marginTop: 13,
-    },
-    tabBarUnderline: {
-        backgroundColor: '#FE566D'
-    },
-})
 
+    tagsContainer: {
+        flex:1,
+        height: 100,
+        marginBottom: 50,
+    },
+    tagInput: {
+        flex:1,
+        height: 30,
+        // borderWidth: 1,
+        // borderColor: 'black',
+        width: windowWidth-margin*4,
+        marginRight: 20,
+        //marginLeft: margin,
+    },
+    tags: {
+        flex: 1,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        width: windowWidth-margin*2,
+        height: 100,
+        margin: margin,
+        marginTop: 30,
+        // borderWidth: 1,
+        // borderColor: 'black',
+    },
+    tag: {
+        height: 26,
+        marginRight: 10,
+        marginBottom: 5,
+        padding: 5,
+        paddingLeft: 10,
+        paddingRight: 10,
+        backgroundColor: '#F3F3F3',
+        // borderColor: '#adadad',
+        // borderWidth: 0.5,
+        borderRadius: 5,
+    },
+    imgContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        paddingTop: 0,
+        marginLeft: margin,
+        marginBottom: 20,
+    },
+    imgWrapper: {
+        position: 'relative',
+        width: (windowWidth-margin*2-imgInterval*2) / 3,
+        height:(windowWidth-margin*2-imgInterval*2) / 3,
+        marginBottom: imgInterval,
+        marginRight: imgInterval,
+    },
+    img: {
+        width: (windowWidth-margin*2-imgInterval*2) / 3,
+        height:(windowWidth-margin*2-imgInterval*2) / 3,
+        marginBottom: imgInterval,
+        marginRight: imgInterval,
+        resizeMode: 'cover',
+    },
+    delIcon: {
+        position: 'absolute',
+        top:0,
+        right: 0,
+        zIndex: 1,
+        backgroundColor: 'rgba(0,0,0,0)',
+    }
 
-export default NearbyScene
+});
+
+module.exports = NewFeed;
