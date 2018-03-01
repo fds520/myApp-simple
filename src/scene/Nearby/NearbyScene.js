@@ -1,6 +1,7 @@
 import React, {PureComponent} from 'react'
 import {
     Text,
+    Image,
     TextInput,
     TouchableOpacity,
     View,
@@ -8,8 +9,11 @@ import {
     Modal,
     StyleSheet,
     Dimensions,
-    NativeModules
+    NativeModules,
+    StatusBar,
+    FlatList
 } from 'react-native';
+import GroupPurchaseCell from '../GroupPurchase/GroupPurchaseCell';
 var ImagePicker = NativeModules.ImageCropPicker;
 const windowWidth = Dimensions.get('window').width;
 const margin = 20;
@@ -39,6 +43,141 @@ class NearbyScene extends PureComponent<Props> {
             transparent: false,
         }
     }
+
+    cancle() {
+        this.setState({
+                          modalVisible: false,
+                      });
+        this.props.pop();
+    }
+
+    pickMultiple() {
+        ImagePicker.openPicker({
+            multiple: true,
+            maxFiles: imgCountLimit - this.state.images.length,
+        }).then(images => {
+            var newImages = this.state.images;
+            images.map((i, index) => {
+                console.log('received image', i);
+                newImages.push({uri: i.path, width: i.width, height: i.height, mime: i.mime, index: index});
+            });
+            this.setState({
+                images: newImages,
+            });
+        }).catch(e => alert(e));
+    }
+
+    upload() {
+        var putPolicy = new Auth.PutPolicy2(
+            {scope: "osfimgs2"}
+        );
+        var uptoken = putPolicy.token();
+
+        if(this.state.images !== null && this.state.images.length != 0) {
+            let formData = new FormData();
+            for(let img of this.state.images) {
+                formData.append('file'+img.index, {uri: img.uri, type: 'application/octet-stream',name: img.index});
+                formData.append('token', uptoken);
+                this.props.sendOk(false, 0);
+                Rpc.uploadFile(img.uri, uptoken, formData).then((response) => response.json()).then((responseData) => {
+                    this.state.imagesID.push({key:responseData.hash });
+                    if(this.state.imagesID.length == this.state.images.length) {
+                        newFeed(this.state.text, this.state.imagesID, this.state.tags, (result, id) => {
+                            this.props.sendOk(result, id);
+                        });
+                    }
+                });
+                this.cancle();
+            }
+        } else {
+            this.props.sendOk(false, 0);
+            newFeed(this.state.text, '', this.state.tags, (result, id) => {
+                this.props.sendOk(result, id);
+            });
+            this.cancle();
+        }
+    }
+
+    delImg(index) {
+        this.state.images.splice(index, 1);
+    }
+
+    renderImgsPicked() {
+        var imgViews = [];
+        if(this.state.images !== null && this.state.images.length != 0) {
+            for(let img of this.state.images) {
+                imgViews.push(<View style={styles.imgWrapper}>
+                        <Image style={styles.img} source={img} />
+                    </View>
+                );
+            }
+        }
+
+        if(this.state.images.length < imgCountLimit) {
+            imgViews.push(<View style={styles.imgWrapper}>
+                <TouchableOpacity onPress={this.pickMultiple}>
+                    <Image style={styles.img} source={require('../../img/pickBtn.png')} />
+                </TouchableOpacity>
+            </View>);
+        }
+        return imgViews || <View/>;
+    }
+
+    send() {
+        this.upload();
+    }
+
+    checkTagInput(tag) {
+        if(tag.indexOf(' ') == 0) return;
+        if(tag.indexOf(' ') > 0) {
+            tag = tag.replace(/(^\s*)|(\s*$)/g,"");
+            console.log('['+tag+']');
+            for(let i in this.state.tags) {
+                if(this.state.tags[i] == tag) {
+                    return;
+                }
+            }
+            this.state.tags.push(tag);
+            this.setState({tag: ''});
+        } else {
+            this.setState({tag: tag});
+        }
+    }
+
+    delTag(tag) {
+        console.log('del ' + tag);
+        var tags = this.state.tags;
+        for(let i in tags) {
+            if(tags[i] == tag) {
+                tags.splice(i,1);
+                break;
+            }
+        }
+        this.setState({tags: tags});
+    }
+
+    renderTags() {
+        var tagViews = [];
+        for(let i in this.state.tags) {
+            tagViews.push(<TouchableOpacity style={styles.tag} onPress={() => this.delTag(this.state.tags[i])}>
+                <Text style={{color: '#9B9B9B'}}>{this.state.tags[i]} X</Text>
+            </TouchableOpacity>);
+        }
+        return tagViews;
+    }
+
+    renderCell = (rowData: any) => {
+        return (
+            <GroupPurchaseCell
+                info={rowData.item}
+                onPress={() => {
+                    StatusBar.setBarStyle('default', false)
+                    this.props.navigation.navigate('GroupPurchase', {info: rowData.item})
+                }}
+            />
+        )
+    }
+
     render() {
         var modalBackgroundStyle = {
             backgroundColor: this.state.transparent ? 'rgba(0, 0, 0, 0.5)' : '#f5fcff',
@@ -53,11 +192,11 @@ class NearbyScene extends PureComponent<Props> {
                 visible={this.state.modalVisible}>
                 <View style={styles.nav}>
                     <View style={styles.cancleBtn}>
-                        <Text>取消</Text>
+                        <Text onPress={this.cancle}>取消</Text>
                     </View>
                     <View style={styles.title}><Text style={{textAlign: 'center', fontWeight: 'bold'}}>发状态</Text></View>
                     <View style={styles.sendBtn}>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={this.send}>
                             <Text style={{textAlign: 'right', color: '#00B5AD'}}>发送</Text>
                         </TouchableOpacity>
                     </View>
@@ -80,7 +219,7 @@ class NearbyScene extends PureComponent<Props> {
                         </View>
                     </View>
                     <View style={styles.imgContainer}>
-                        {}
+                        {this.renderImgsPicked()}
                     </View>
                     <View style={styles.tagsContainer}>
                         <View style={{flex:1, flexDirection: 'row'}}>
@@ -94,27 +233,32 @@ class NearbyScene extends PureComponent<Props> {
                                 keyboardType='twitter'
                                 maxLength = {140}
                                 value={this.state.tag}
-                                onChangeText={(tag) => {}}
+                                onChangeText={(tag) => {this.checkTagInput(tag)}}
                             />
                         </View>
                         <View style={styles.tags}>
-                            {this.state.tags.length > 0}
+                            {this.state.tags.length > 0 && this.renderTags()}
                         </View>
                     </View>
                 </ScrollView>
+                <View style={styles.container}>
+                    <FlatList
+                        data={this.state.dataList}
+                        renderItem={this.renderCell}
+                        // keyExtractor={this.keyExtractor}
+                        // onRefresh={this.requestData}
+                        refreshing={this.state.refreshing}
+                        // ListHeaderComponent={this.renderHeader}
+                    />
+                </View>
             </Modal>
         )
     }
 }
 
-
 var styles = StyleSheet.create({
     container: {
-        //justifyContent: 'center',
-        //marginTop: 70,
-        //padding: 20,
         flex : 1,
-        // backgroundColor: '#ffffff',
     },
     innerContainer: {
         borderRadius: 10,
