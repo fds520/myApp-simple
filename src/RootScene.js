@@ -1,12 +1,3 @@
-/**
- * Copyright (c) 2017-present, Liu Jinyong
- * All rights reserved.
- *
- * https://github.com/huanxsd/MeiTuan  
- * @flow
- */
-
-
 import React, {PureComponent} from 'react'
 import {StatusBar} from 'react-native'
 import {StackNavigator, TabNavigator, TabBarBottom} from 'react-navigation'
@@ -29,13 +20,11 @@ function getCurrentRouteName(navigationState: any) {
         return null
     }
     const route = navigationState.routes[navigationState.index]
-    // dive into nested navigators
     if (route.routes) {
         return getCurrentRouteName(route)
     }
     return route.routeName
 }
-
 
 class RootScene extends PureComponent<{}> {
     constructor() {

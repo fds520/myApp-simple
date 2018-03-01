@@ -1,12 +1,3 @@
-/**
- * Copyright (c) 2017-present, Liu Jinyong
- * All rights reserved.
- *
- * https://github.com/huanxsd/MeiTuan 
- * @flow
- */
-
-
 import React, {PureComponent} from 'react'
 import {View, Text, StyleSheet, ScrollView, TouchableOpacity, ListView, Image, StatusBar, FlatList} from 'react-native'
 
@@ -15,7 +6,6 @@ import {color, Button, NavigationItem, SpacingView} from '../../widget'
 
 import {screen, system} from '../../common'
 import api from '../../api'
-
 
 import HomeMenuView from './HomeMenuView'
 import HomeGridView from './HomeGridView'
@@ -45,7 +35,6 @@ class HomeScene extends PureComponent<Props, State> {
             <NavigationItem
                 icon={require('../../img/mine/icon_navigation_item_message_white.png')}
                 onPress={() => {
-
                 }}
             />
         ),
@@ -54,7 +43,6 @@ class HomeScene extends PureComponent<Props, State> {
                 title='福州'
                 titleStyle={{color: 'white'}}
                 onPress={() => {
-
                 }}
             />
         ),
@@ -63,7 +51,6 @@ class HomeScene extends PureComponent<Props, State> {
 
     constructor(props: Props) {
         super(props)
-
         this.state = {
             discounts: [],
             dataList: [],
@@ -77,7 +64,6 @@ class HomeScene extends PureComponent<Props, State> {
 
     requestData = () => {
         this.setState({refreshing: true})
-
         this.requestDiscount()
         this.requestRecommend()
     }
@@ -98,7 +84,6 @@ class HomeScene extends PureComponent<Props, State> {
                     }
                 }
             )
-
             this.setState({
                 dataList: dataList,
                 refreshing: false,
@@ -152,10 +137,8 @@ class HomeScene extends PureComponent<Props, State> {
 
     onGridSelected = (index: number) => {
         let discount = this.state.discounts[index]
-
         if (discount.type == 1) {
             StatusBar.setBarStyle('default', false)
-
             let location = discount.tplurl.indexOf('http')
             let url = discount.tplurl.slice(location)
             this.props.navigation.navigate('Web', {url: url})
@@ -172,11 +155,9 @@ class HomeScene extends PureComponent<Props, State> {
                 <FlatList
                     data={this.state.dataList}
                     renderItem={this.renderCell}
-
                     keyExtractor={this.keyExtractor}
                     onRefresh={this.requestData}
                     refreshing={this.state.refreshing}
-
                     ListHeaderComponent={this.renderHeader}
                 />
             </View>
@@ -215,6 +196,5 @@ const styles = StyleSheet.create({
         margin: 5,
     }
 })
-
 
 export default HomeScene

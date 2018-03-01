@@ -9,11 +9,8 @@ import {
     Modal,
     StyleSheet,
     Dimensions,
-    NativeModules,
-    StatusBar,
-    FlatList
+    NativeModules
 } from 'react-native';
-import GroupPurchaseCell from '../GroupPurchase/GroupPurchaseCell';
 var ImagePicker = NativeModules.ImageCropPicker;
 const windowWidth = Dimensions.get('window').width;
 const margin = 20;
@@ -24,7 +21,6 @@ const textLengthLimit = 140;
 type Props = {
     navigation: any,
 }
-
 
 class NearbyScene extends PureComponent<Props> {
 
@@ -45,10 +41,8 @@ class NearbyScene extends PureComponent<Props> {
     }
 
     cancle() {
-        this.setState({
-                          modalVisible: false,
-                      });
-        this.props.pop();
+        alert(1111)
+        this.props.nav.pop();
     }
 
     pickMultiple() {
@@ -166,25 +160,7 @@ class NearbyScene extends PureComponent<Props> {
         return tagViews;
     }
 
-    renderCell = (rowData: any) => {
-        return (
-            <GroupPurchaseCell
-                info={rowData.item}
-                onPress={() => {
-                    StatusBar.setBarStyle('default', false)
-                    this.props.navigation.navigate('GroupPurchase', {info: rowData.item})
-                }}
-            />
-        )
-    }
-
     render() {
-        var modalBackgroundStyle = {
-            backgroundColor: this.state.transparent ? 'rgba(0, 0, 0, 0.5)' : '#f5fcff',
-        };
-        var innerContainerTransparentStyle = this.state.transparent
-            ? {backgroundColor: '#fff', padding: 20}
-            : null;
         return (
             <Modal
                 animationType={"slide"}
@@ -241,16 +217,6 @@ class NearbyScene extends PureComponent<Props> {
                         </View>
                     </View>
                 </ScrollView>
-                <View style={styles.container}>
-                    <FlatList
-                        data={this.state.dataList}
-                        renderItem={this.renderCell}
-                        // keyExtractor={this.keyExtractor}
-                        // onRefresh={this.requestData}
-                        refreshing={this.state.refreshing}
-                        // ListHeaderComponent={this.renderHeader}
-                    />
-                </View>
             </Modal>
         )
     }
@@ -278,7 +244,6 @@ var styles = StyleSheet.create({
         flexDirection:'column',
     },
     nav: {
-        //flex: 1,
         flexDirection: 'row',
         height: 70,
         paddingTop: 35,
@@ -288,17 +253,12 @@ var styles = StyleSheet.create({
         borderBottomColor: '#9B9B9B',
     },
     input: {
-        //flex:1,
-        //position: 'relative',
-        //flexDirection:'column',
     },
     footer: {
         height: 30,
         backgroundColor:'#ff99ff',
     },
     multiline: {
-        // borderWidth: 1,
-        // borderColor: 'black',
         flex: 1,
         fontSize: 18,
         height: 150,
@@ -321,11 +281,8 @@ var styles = StyleSheet.create({
     tagInput: {
         flex:1,
         height: 30,
-        // borderWidth: 1,
-        // borderColor: 'black',
         width: windowWidth-margin*4,
         marginRight: 20,
-        //marginLeft: margin,
     },
     tags: {
         flex: 1,
@@ -335,8 +292,6 @@ var styles = StyleSheet.create({
         height: 100,
         margin: margin,
         marginTop: 30,
-        // borderWidth: 1,
-        // borderColor: 'black',
     },
     tag: {
         height: 26,
@@ -346,12 +301,9 @@ var styles = StyleSheet.create({
         paddingLeft: 10,
         paddingRight: 10,
         backgroundColor: '#F3F3F3',
-        // borderColor: '#adadad',
-        // borderWidth: 0.5,
         borderRadius: 5,
     },
     imgContainer: {
-        //height: windowHeight - 70 - 150 - 30,
         flexDirection: 'row',
         flexWrap: 'wrap',
         paddingTop: 0,
@@ -379,6 +331,5 @@ var styles = StyleSheet.create({
         zIndex: 1,
         backgroundColor: 'rgba(0,0,0,0)',
     }
-
 });
 export default NearbyScene
