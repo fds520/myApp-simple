@@ -7,7 +7,6 @@ import {
     View,
     ScrollView,
     Modal,
-    PropTypes,
     StyleSheet,
     Dimensions,
     NativeModules
@@ -17,15 +16,13 @@ import {newFeed} from '../../api/FeedAPI';
 import {Auth,Rpc} from 'react-native-qiniu';
 import KeyboardSpacer from 'react-native-keyboard-spacer';
 var ImagePicker = NativeModules.ImageCropPicker;
-
 const windowWidth = Dimensions.get('window').width;
 const margin = 20;
 const imgInterval = 5;
 const imgCountLimit = 9;
 const textLengthLimit = 140;
 
-var NewFeed = React.createClass({
-
+class NewFeed {
     getInitialState() {
         return {
             text: '',
@@ -39,222 +36,219 @@ var NewFeed = React.createClass({
             modalVisible: true,
             transparent: false,
         };
-    },
+    }
 
-    cancle: function() {
-        this.setState({
-            modalVisible: false,
+    cancle() {
+    this.setState({
+                      modalVisible: false,
+                  });
+    this.props.pop();
+}
+
+pickMultiple() {
+    ImagePicker.openPicker({
+        multiple: true,
+        maxFiles: imgCountLimit - this.state.images.length,
+    }).then(images => {
+        var newImages = this.state.images;
+        images.map((i, index) => {
+            console.log('received image', i);
+            newImages.push({uri: i.path, width: i.width, height: i.height, mime: i.mime, index: index});
         });
-        this.props.pop();
-    },
+        this.setState({
+            images: newImages,
+        });
+    }).catch(e => alert(e));
+}
 
-    pickMultiple: function() {
-        ImagePicker.openPicker({
-            multiple: true,
-            maxFiles: imgCountLimit - this.state.images.length,
-        }).then(images => {
-            var newImages = this.state.images;
-            images.map((i, index) => {
-                console.log('received image', i);
-                newImages.push({uri: i.path, width: i.width, height: i.height, mime: i.mime, index: index});
-            });
-            this.setState({
-                images: newImages,
-            });
-        }).catch(e => alert(e));
-    },
+upload() {
 
-    upload: function() {
+    var putPolicy = new Auth.PutPolicy2(
+        {scope: "osfimgs2"}
+    );
+    var uptoken = putPolicy.token();
 
-        var putPolicy = new Auth.PutPolicy2(
-            {scope: "osfimgs2"}
-        );
-        var uptoken = putPolicy.token();
+    if(this.state.images !== null && this.state.images.length != 0) {
+        let formData = new FormData();
+        for(let img of this.state.images) {
 
-        if(this.state.images !== null && this.state.images.length != 0) {
-            let formData = new FormData();
-            for(let img of this.state.images) {
+            formData.append('file'+img.index, {uri: img.uri, type: 'application/octet-stream',name: img.index});
+            formData.append('token', uptoken);
 
-                formData.append('file'+img.index, {uri: img.uri, type: 'application/octet-stream',name: img.index});
-                formData.append('token', uptoken);
-
-                this.props.sendOk(false, 0);
-                Rpc.uploadFile(img.uri, uptoken, formData).then((response) => response.json()).then((responseData) => {
-                    console.log(responseData);
-                    this.state.imagesID.push({key:responseData.hash });
-                    if(this.state.imagesID.length == this.state.images.length) {
-                        newFeed(this.state.text, this.state.imagesID, this.state.tags, (result, id) => {
-                            this.props.sendOk(result, id);
-                        });
-                    }
-                });
-                this.cancle();
-            }
-
-        } else {
             this.props.sendOk(false, 0);
-            newFeed(this.state.text, '', this.state.tags, (result, id) => {
-                this.props.sendOk(result, id);
+            Rpc.uploadFile(img.uri, uptoken, formData).then((response) => response.json()).then((responseData) => {
+                console.log(responseData);
+                this.state.imagesID.push({key:responseData.hash });
+                if(this.state.imagesID.length == this.state.images.length) {
+                    newFeed(this.state.text, this.state.imagesID, this.state.tags, (result, id) => {
+                        this.props.sendOk(result, id);
+                    });
+                }
             });
             this.cancle();
         }
-    },
 
-    delImg: function(index) {
-        this.state.images.splice(index, 1);
-    },
+    } else {
+        this.props.sendOk(false, 0);
+        newFeed(this.state.text, '', this.state.tags, (result, id) => {
+            this.props.sendOk(result, id);
+        });
+        this.cancle();
+    }
+}
 
-    renderImgsPicked: function() {
+delImg(index) {
+    this.state.images.splice(index, 1);
+}
 
-
-        var imgViews = [];
-        if(this.state.images !== null && this.state.images.length != 0) {
-            for(let img of this.state.images) {
-                imgViews.push(<View style={styles.imgWrapper}>
-                        {/* <Text style={styles.delIcon} onPress={this.delImg(img.index)}>x</Text> */}
-                        <Image style={styles.img} source={img} />
-                    </View>
-                );
-            }
-        }
-
-        if(this.state.images.length < imgCountLimit) {
+renderImgsPicked() {
+    var imgViews = [];
+    if(this.state.images !== null && this.state.images.length != 0) {
+        for(let img of this.state.images) {
             imgViews.push(<View style={styles.imgWrapper}>
-                {/* <Text style={styles.delIcon} onPress={this.delImg(img.index)}>x</Text> */}
-                <TouchableOpacity onPress={this.pickMultiple}>
-                    <Image style={styles.img} source={require('../../img/pickBtn.png')} />
-                </TouchableOpacity>
-            </View>);
+                    {/* <Text style={styles.delIcon} onPress={this.delImg(img.index)}>x</Text> */}
+                    <Image style={styles.img} source={img} />
+                </View>
+            );
         }
-        //this.upload();
+    }
 
-        return imgViews || <View/>;
-    },
+    if(this.state.images.length < imgCountLimit) {
+        imgViews.push(<View style={styles.imgWrapper}>
+            {/* <Text style={styles.delIcon} onPress={this.delImg(img.index)}>x</Text> */}
+            <TouchableOpacity onPress={this.pickMultiple}>
+                <Image style={styles.img} source={require('../../img/pickBtn.png')} />
+            </TouchableOpacity>
+        </View>);
+    }
+    //this.upload();
 
-    send: function() {
-        this.upload();
-    },
+    return imgViews || <View/>;
+}
 
-    checkTagInput: function(tag) {
-        //empty check
-        if(tag.indexOf(' ') == 0) return;
+send() {
+    this.upload();
+}
 
-        //end input with blank space
-        if(tag.indexOf(' ') > 0) {
-            tag = tag.replace(/(^\s*)|(\s*$)/g,"");
-            console.log('['+tag+']');
-            for(let i in this.state.tags) {
-                if(this.state.tags[i] == tag) {
-                    return;
-                }
-            }
-            this.state.tags.push(tag);
-            this.setState({tag: ''});
-        } else {
-            this.setState({tag: tag});
-        }
+checkTagInput(tag) {
+    //empty check
+    if(tag.indexOf(' ') == 0) return;
 
-        //console.log('['+tag+']');
-    },
-
-    delTag: function(tag) {
-        console.log('del ' + tag);
-        var tags = this.state.tags;
-        for(let i in tags) {
-            if(tags[i] == tag) {
-                tags.splice(i,1);
-                break;
-            }
-        }
-        this.setState({tags: tags});
-    },
-
-    renderTags: function() {
-        var tagViews = [];
+    //end input with blank space
+    if(tag.indexOf(' ') > 0) {
+        tag = tag.replace(/(^\s*)|(\s*$)/g,"");
+        console.log('['+tag+']');
         for(let i in this.state.tags) {
-            tagViews.push(<TouchableOpacity style={styles.tag} onPress={() => this.delTag(this.state.tags[i])}>
-                <Text style={{color: '#9B9B9B'}}>{this.state.tags[i]} X</Text>
-            </TouchableOpacity>);
+            if(this.state.tags[i] == tag) {
+                return;
+            }
         }
-        return tagViews;
-    },
+        this.state.tags.push(tag);
+        this.setState({tag: ''});
+    } else {
+        this.setState({tag: tag});
+    }
+}
 
-    render: function() {
-        var modalBackgroundStyle = {
-            backgroundColor: this.state.transparent ? 'rgba(0, 0, 0, 0.5)' : '#f5fcff',
-        };
-        var innerContainerTransparentStyle = this.state.transparent
-            ? {backgroundColor: '#fff', padding: 20}
-            : null;
-        return (
-            //<View style={styles.container}>
-            <Modal
-                animationType={"slide"}
-                transparent={this.state.transparent}
-                visible={this.state.modalVisible}>
-                <View style={styles.nav}>
-                    <View style={styles.cancleBtn}>
-                        <Text onPress={this.cancle}>取消</Text>
+delTag(tag) {
+    console.log('del ' + tag);
+    var tags = this.state.tags;
+    for(let i in tags) {
+        if(tags[i] == tag) {
+            tags.splice(i,1);
+            break;
+        }
+    }
+    this.setState({tags: tags});
+}
+
+renderTags() {
+    var tagViews = [];
+    for(let i in this.state.tags) {
+        tagViews.push(<TouchableOpacity style={styles.tag} onPress={() => this.delTag(this.state.tags[i])}>
+            <Text style={{color: '#9B9B9B'}}>{this.state.tags[i]} X</Text>
+        </TouchableOpacity>);
+    }
+    return tagViews;
+}
+
+render() {
+    var modalBackgroundStyle = {
+        backgroundColor: this.state.transparent ? 'rgba(0, 0, 0, 0.5)' : '#f5fcff',
+    };
+    var innerContainerTransparentStyle = this.state.transparent
+        ? {backgroundColor: '#fff', padding: 20}
+        : null;
+    return (
+        //<View style={styles.container}>
+        <Modal
+            animationType={"slide"}
+            transparent={this.state.transparent}
+            visible={this.state.modalVisible}>
+            <View style={styles.nav}>
+                <View style={styles.cancleBtn}>
+                    <Text onPress={this.cancle}>取消</Text>
+                </View>
+                <View style={styles.title}><Text style={{textAlign: 'center', fontWeight: 'bold'}}>发状态</Text></View>
+                <View style={styles.sendBtn}>
+                    <TouchableOpacity onPress={this.send}>
+                        <Text style={{textAlign: 'right', color: '#00B5AD'}}>发送</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+            <ScrollView style={{ flex: 1, flexDirection: 'column'}}>
+
+                <View style={styles.input}>
+                    <View>
+                        <TextInput
+                            style={styles.multiline}
+                            placeholder="说点什么吧..."
+                            returnKeyType="next"
+                            autoFocus={true}
+                            multiline={true}
+                            keyboardType='twitter'
+                            maxLength = {140}
+                            value={this.state.text}
+                            onChangeText={(text) => this.setState({text})}
+                        />
+                        <Text style={{position: 'absolute', bottom: 10, right: 20, color: '#9B9B9B'}}>{textLengthLimit-this.state.text.length}</Text>
                     </View>
-                    <View style={styles.title}><Text style={{textAlign: 'center', fontWeight: 'bold'}}>发状态</Text></View>
-                    <View style={styles.sendBtn}>
-                        <TouchableOpacity onPress={this.send}>
-                            <Text style={{textAlign: 'right', color: '#00B5AD'}}>发送</Text>
-                        </TouchableOpacity>
+
+                </View>
+                <View style={styles.imgContainer}>
+                    {this.renderImgsPicked()}
+                </View>
+                <View style={styles.tagsContainer}>
+                    <View style={{flex:1, flexDirection: 'row'}}>
+                        {}
+                        <Text style={styles.tagIcon}>#</Text>
+                        <TextInput
+                            style={styles.tagInput}
+                            placeholder="添加标签"
+                            returnKeyType="done"
+                            autoFocus={false}
+                            multiline={false}
+                            keyboardType='twitter'
+                            maxLength = {140}
+                            value={this.state.tag}
+                            onChangeText={(tag) => {this.checkTagInput(tag)}}
+                        />
+                    </View>
+                    <View style={styles.tags}>
+                        {this.state.tags.length > 0 &&  this.renderTags()}
                     </View>
                 </View>
-                <ScrollView style={{ flex: 1, flexDirection: 'column'}}>
+                <KeyboardSpacer/>
+            </ScrollView>
 
-                    <View style={styles.input}>
-                        <View>
-                            <TextInput
-                                style={styles.multiline}
-                                placeholder="说点什么吧..."
-                                returnKeyType="next"
-                                autoFocus={true}
-                                multiline={true}
-                                keyboardType='twitter'
-                                maxLength = {140}
-                                value={this.state.text}
-                                onChangeText={(text) => this.setState({text})}
-                            />
-                            <Text style={{position: 'absolute', bottom: 10, right: 20, color: '#9B9B9B'}}>{textLengthLimit-this.state.text.length}</Text>
-                        </View>
+        </Modal>
+        //</View>
+    );
+}
+}
+/*var NewFeed = React.createClass({
 
-                    </View>
-                    <View style={styles.imgContainer}>
-                        {this.renderImgsPicked()}
-                    </View>
-                    <View style={styles.tagsContainer}>
-                        <View style={{flex:1, flexDirection: 'row'}}>
-                            {}
-                            <Text style={styles.tagIcon}>#</Text>
-                            <TextInput
-                                style={styles.tagInput}
-                                placeholder="添加标签"
-                                returnKeyType="done"
-                                autoFocus={false}
-                                multiline={false}
-                                keyboardType='twitter'
-                                maxLength = {140}
-                                value={this.state.tag}
-                                onChangeText={(tag) => {this.checkTagInput(tag)}}
-                            />
-                        </View>
-                        <View style={styles.tags}>
-                            {this.state.tags.length > 0 &&  this.renderTags()}
-                        </View>
-                    </View>
-                    <KeyboardSpacer/>
-                </ScrollView>
-
-            </Modal>
-
-            //</View>
-        );
-    },
-});
-
+});*/
 
 var styles = StyleSheet.create({
     container: {
